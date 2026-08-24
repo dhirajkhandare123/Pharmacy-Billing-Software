@@ -14,6 +14,7 @@ import java.time.LocalDate;
 public class PurchaseItemDTO {
 
     private Long medicineId;
+    private String medicineName;
 
     private String batchNumber;
 
