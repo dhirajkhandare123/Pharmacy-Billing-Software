@@ -137,7 +137,7 @@ const PurchaseList = () => {
                   </td>
 
                   <td className="p-3">
-                    {purchase.supplier?.name}
+                    {purchase.supplierName}
                   </td>
 
                   <td className="p-3">
