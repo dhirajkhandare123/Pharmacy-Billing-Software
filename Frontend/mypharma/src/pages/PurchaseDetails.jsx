@@ -3,7 +3,6 @@ import axios from "axios";
 import { useNavigate, useParams } from "react-router-dom";
 
 const PurchaseDetails = () => {
-
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -11,22 +10,18 @@ const PurchaseDetails = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-
     axios
       .get(`http://localhost:8080/api/purchases/${id}`)
       .then((res) => {
+        console.log("Purchase Details:", res.data);
+
         setPurchase(res.data);
         setLoading(false);
       })
       .catch((err) => {
-        console.error(
-          "Error fetching purchase:",
-          err
-        );
-
+        console.error("Error fetching purchase:", err);
         setLoading(false);
       });
-
   }, [id]);
 
   if (loading) {
@@ -72,27 +67,26 @@ const PurchaseDetails = () => {
               <span className="font-semibold">
                 Invoice:
               </span>{" "}
-              {purchase.invoiceNumber}
+              {purchase.invoiceNumber || "-"}
             </p>
 
             <p className="mb-2">
               <span className="font-semibold">
                 Supplier:
               </span>{" "}
-              {purchase.supplier?.name}
+              {purchase.supplierName || "-"}
             </p>
 
             <p>
               <span className="font-semibold">
                 Date:
               </span>{" "}
-              {purchase.purchaseDate}
+              {purchase.purchaseDate || "-"}
             </p>
           </div>
 
           {/* Payment Status */}
           <div>
-
             <span className="font-semibold">
               Payment:
             </span>{" "}
@@ -104,9 +98,8 @@ const PurchaseDetails = () => {
                   : "bg-red-100 text-red-700"
               }`}
             >
-              {purchase.paymentStatus}
+              {purchase.paymentStatus || "-"}
             </span>
-
           </div>
 
         </div>
@@ -146,36 +139,58 @@ const PurchaseDetails = () => {
 
           <tbody>
 
-            {purchase.items?.map((item) => (
+            {purchase.items && purchase.items.length > 0 ? (
 
-              <tr
-                key={item.id}
-                className="border-b"
-              >
+              purchase.items.map((item, index) => (
 
-                <td className="p-3">
-                  {item.medicine?.name}
+                <tr
+                  key={item.id || item.medicineId || index}
+                  className="border-b hover:bg-gray-50"
+                >
+
+                  {/* Medicine Name */}
+                  <td className="p-3 font-medium">
+                    {item.medicineName ||
+                      item.medicine?.name ||
+                      "Medicine not found"}
+                  </td>
+
+                  {/* Batch */}
+                  <td className="p-3">
+                    {item.batchNumber || "-"}
+                  </td>
+
+                  {/* Quantity */}
+                  <td className="p-3 text-right">
+                    {item.quantity ?? 0}
+                  </td>
+
+                  {/* Purchase Price */}
+                  <td className="p-3 text-right">
+                    ₹{item.purchasePrice ?? item.buyPrice ?? 0}
+                  </td>
+
+                  {/* Total Price */}
+                  <td className="p-3 text-right font-semibold">
+                    ₹{item.totalPrice ?? item.total ?? 0}
+                  </td>
+
+                </tr>
+
+              ))
+
+            ) : (
+
+              <tr>
+                <td
+                  colSpan="5"
+                  className="p-6 text-center text-gray-500"
+                >
+                  No medicines found in this purchase.
                 </td>
-
-                <td className="p-3">
-                  {item.batchNumber}
-                </td>
-
-                <td className="p-3 text-right">
-                  {item.quantity}
-                </td>
-
-                <td className="p-3 text-right">
-                  ₹{item.buyPrice}
-                </td>
-
-                <td className="p-3 text-right font-semibold">
-                  ₹{item.total}
-                </td>
-
               </tr>
 
-            ))}
+            )}
 
           </tbody>
 
@@ -191,7 +206,7 @@ const PurchaseDetails = () => {
               </td>
 
               <td className="p-4 text-right font-bold text-lg">
-                ₹{purchase.totalAmount}
+                ₹{purchase.totalAmount ?? 0}
               </td>
             </tr>
 
