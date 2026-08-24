@@ -22,6 +22,7 @@ const App = () => {
         <div className="flex-1 md:ml-64">
           <Navbar />
           <Routes>
+            <Route path="/" element={<Dashboard />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/medicines" element={<Medicines />} />
             <Route path="/customers" element={<Customers />} />
