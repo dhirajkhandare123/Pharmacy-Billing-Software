@@ -1,7 +1,5 @@
 package com.mypharma.controller;
 
-
-
 import com.mypharma.dto.InventoryResponseDTO;
 import com.mypharma.services.InventoryService;
 import lombok.RequiredArgsConstructor;
@@ -19,38 +17,34 @@ public class InventoryController {
     private final InventoryService inventoryService;
 
     @GetMapping
-    public ResponseEntity<List<InventoryResponseDTO>> getInventory() {
+    public ResponseEntity<List<InventoryResponseDTO>> getAllInventory() {
 
         return ResponseEntity.ok(
-                inventoryService.getInventory()
+                inventoryService.getAllInventory()
         );
     }
 
     @GetMapping("/low-stock")
-    public ResponseEntity<List<InventoryResponseDTO>>
-    getLowStockMedicines() {
+    public ResponseEntity<List<InventoryResponseDTO>> getLowStock() {
 
         return ResponseEntity.ok(
-                inventoryService.getLowStockMedicines()
+                inventoryService.getLowStock()
         );
     }
 
     @GetMapping("/expired")
-    public ResponseEntity<List<InventoryResponseDTO>>
-    getExpiredMedicines() {
+    public ResponseEntity<List<InventoryResponseDTO>> getExpired() {
 
         return ResponseEntity.ok(
-                inventoryService.getExpiredMedicines()
+                inventoryService.getExpired()
         );
     }
 
-    @GetMapping("/expiring")
-    public ResponseEntity<List<InventoryResponseDTO>>
-    getExpiringMedicines(
-            @RequestParam(defaultValue = "30") int days) {
+    @GetMapping("/expiring-soon")
+    public ResponseEntity<List<InventoryResponseDTO>> getExpiringSoon() {
 
         return ResponseEntity.ok(
-                inventoryService.getExpiringMedicines(days)
+                inventoryService.getExpiringSoon()
         );
     }
 }
