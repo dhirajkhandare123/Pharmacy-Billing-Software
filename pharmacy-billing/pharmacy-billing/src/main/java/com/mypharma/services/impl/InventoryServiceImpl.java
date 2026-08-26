@@ -1,183 +1,125 @@
 package com.mypharma.services.impl;
 
-
-
 import com.mypharma.dto.InventoryResponseDTO;
 import com.mypharma.entity.Medicine;
 import com.mypharma.entity.PurchaseItem;
-import com.mypharma.repository.MedicineRepository;
 import com.mypharma.repository.PurchaseItemRepository;
 import com.mypharma.services.InventoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class InventoryServiceImpl implements InventoryService {
 
-    private final MedicineRepository medicineRepository;
     private final PurchaseItemRepository purchaseItemRepository;
 
     @Override
-    public List<InventoryResponseDTO> getInventory() {
+    public List<InventoryResponseDTO> getAllInventory() {
 
-        List<InventoryResponseDTO> result = new ArrayList<>();
+        List<PurchaseItem> items = purchaseItemRepository.findAll();
 
-        List<Medicine> medicines = medicineRepository.findAll();
-
-        for (Medicine medicine : medicines) {
-
-            List<PurchaseItem> items =
-                    purchaseItemRepository.findByMedicineId(
-                            medicine.getId()
-                    );
-
-            if (items.isEmpty()) {
-
-                result.add(createDTO(
-                        medicine,
-                        null
-                ));
-
-            } else {
-
-                for (PurchaseItem item : items) {
-
-                    result.add(createDTO(
-                            medicine,
-                            item
-                    ));
-                }
-            }
-        }
-
-        return result;
-    }
-
-    @Override
-    public List<InventoryResponseDTO> getLowStockMedicines() {
-
-        List<Medicine> medicines = medicineRepository.findAll();
-
-        return medicines.stream()
-                .filter(medicine ->
-                        medicine.getStockQuantity() != null
-                                && medicine.getMinimumStockLevel() != null
-                                && medicine.getStockQuantity()
-                                <= medicine.getMinimumStockLevel()
-                )
-                .map(medicine ->
-                        createDTO(medicine, null)
-                )
+        return items.stream()
+                .map(this::convertToDTO)
                 .toList();
     }
 
     @Override
-    public List<InventoryResponseDTO> getExpiredMedicines() {
+    public List<InventoryResponseDTO> getLowStock() {
 
-        LocalDate today = LocalDate.now();
+        List<PurchaseItem> items = purchaseItemRepository.findAll();
 
-        List<InventoryResponseDTO> result = new ArrayList<>();
+        return items.stream()
+                .filter(item -> {
 
-        List<Medicine> medicines = medicineRepository.findAll();
+                    Medicine medicine = item.getMedicine();
 
-        for (Medicine medicine : medicines) {
-
-            List<PurchaseItem> items =
-                    purchaseItemRepository.findByMedicineId(
-                            medicine.getId()
-                    );
-
-            for (PurchaseItem item : items) {
-
-                if (item.getExpiryDate() != null
-                        && item.getExpiryDate().isBefore(today)) {
-
-                    result.add(createDTO(
-                            medicine,
-                            item
-                    ));
-                }
-            }
-        }
-
-        return result;
+                    return medicine.getStockQuantity() != null
+                            && medicine.getMinimumStockLevel() != null
+                            && medicine.getStockQuantity()
+                            <= medicine.getMinimumStockLevel();
+                })
+                .map(this::convertToDTO)
+                .toList();
     }
 
     @Override
-    public List<InventoryResponseDTO> getExpiringMedicines(int days) {
+    public List<InventoryResponseDTO> getExpired() {
 
         LocalDate today = LocalDate.now();
 
-        LocalDate expiryLimit =
-                today.plusDays(days);
-
-        List<InventoryResponseDTO> result = new ArrayList<>();
-
-        List<Medicine> medicines = medicineRepository.findAll();
-
-        for (Medicine medicine : medicines) {
-
-            List<PurchaseItem> items =
-                    purchaseItemRepository.findByMedicineId(
-                            medicine.getId()
-                    );
-
-            for (PurchaseItem item : items) {
-
-                LocalDate expiryDate =
-                        item.getExpiryDate();
-
-                if (expiryDate != null
-                        && !expiryDate.isBefore(today)
-                        && !expiryDate.isAfter(expiryLimit)) {
-
-                    result.add(createDTO(
-                            medicine,
-                            item
-                    ));
-                }
-            }
-        }
-
-        return result;
+        return purchaseItemRepository
+                .findByExpiryDateBefore(today)
+                .stream()
+                .map(this::convertToDTO)
+                .toList();
     }
 
-    private InventoryResponseDTO createDTO(
-            Medicine medicine,
-            PurchaseItem item) {
+    @Override
+    public List<InventoryResponseDTO> getExpiringSoon() {
 
-        LocalDate expiryDate = null;
-        String batchNumber = null;
+        LocalDate today = LocalDate.now();
 
-        if (item != null) {
-            expiryDate = item.getExpiryDate();
-            batchNumber = item.getBatchNumber();
-        }
+        LocalDate thirtyDaysLater = today.plusDays(30);
 
-        boolean expired =
-                expiryDate != null
-                        && expiryDate.isBefore(LocalDate.now());
+        return purchaseItemRepository
+                .findByExpiryDateBetween(today, thirtyDaysLater)
+                .stream()
+                .map(this::convertToDTO)
+                .toList();
+    }
 
-        boolean lowStock =
-                medicine.getStockQuantity() != null
-                        && medicine.getMinimumStockLevel() != null
-                        && medicine.getStockQuantity()
-                        <= medicine.getMinimumStockLevel();
+    private InventoryResponseDTO convertToDTO(PurchaseItem item) {
+
+        Medicine medicine = item.getMedicine();
+
+        String status = calculateStatus(medicine, item);
 
         return InventoryResponseDTO.builder()
                 .medicineId(medicine.getId())
                 .medicineName(medicine.getName())
-                .batchNumber(batchNumber)
-                .quantity(medicine.getStockQuantity())
-                .minimumStockLevel(medicine.getMinimumStockLevel())
-                .expiryDate(expiryDate)
-                .lowStock(lowStock)
-                .expired(expired)
+                .batchNumber(item.getBatchNumber())
+                .quantity(item.getQuantity())
+                .minStock(medicine.getMinimumStockLevel())
+                .expiryDate(item.getExpiryDate())
+                .status(status)
                 .build();
+    }
+
+    private String calculateStatus(
+            Medicine medicine,
+            PurchaseItem item
+    ) {
+
+        LocalDate today = LocalDate.now();
+
+        // First priority: Expired
+        if (item.getExpiryDate() != null
+                && item.getExpiryDate().isBefore(today)) {
+
+            return "EXPIRED";
+        }
+
+        // Second priority: Expiring Soon
+        if (item.getExpiryDate() != null
+                && !item.getExpiryDate().isBefore(today)
+                && !item.getExpiryDate().isAfter(today.plusDays(30))) {
+
+            return "EXPIRING SOON";
+        }
+
+        // Third priority: Low Stock
+        if (medicine.getStockQuantity() != null
+                && medicine.getMinimumStockLevel() != null
+                && medicine.getStockQuantity()
+                <= medicine.getMinimumStockLevel()) {
+
+            return "LOW STOCK";
+        }
+
+        return "NORMAL";
     }
 }
