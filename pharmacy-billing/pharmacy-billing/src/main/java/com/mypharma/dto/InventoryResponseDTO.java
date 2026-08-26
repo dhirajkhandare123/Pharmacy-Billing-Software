@@ -20,11 +20,9 @@ public class InventoryResponseDTO {
 
     private Integer quantity;
 
-    private Integer minimumStockLevel;
+    private Integer minStock;
 
     private LocalDate expiryDate;
 
-    private Boolean lowStock;
-
-    private Boolean expired;
+    private String status;
 }
