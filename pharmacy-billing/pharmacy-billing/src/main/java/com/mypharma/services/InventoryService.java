@@ -1,17 +1,16 @@
 package com.mypharma.services;
 
-
 import com.mypharma.dto.InventoryResponseDTO;
 
 import java.util.List;
 
 public interface InventoryService {
 
-    List<InventoryResponseDTO> getInventory();
+    List<InventoryResponseDTO> getAllInventory();
 
-    List<InventoryResponseDTO> getLowStockMedicines();
+    List<InventoryResponseDTO> getLowStock();
 
-    List<InventoryResponseDTO> getExpiredMedicines();
+    List<InventoryResponseDTO> getExpired();
 
-    List<InventoryResponseDTO> getExpiringMedicines(int days);
+    List<InventoryResponseDTO> getExpiringSoon();
 }
