@@ -24,6 +24,8 @@ public class Sale {
     @Column(unique = true, nullable = false)
     private String invoiceNumber;
 
+    private String customer;
+
     private LocalDateTime saleDate;
 
     private BigDecimal totalAmount;
