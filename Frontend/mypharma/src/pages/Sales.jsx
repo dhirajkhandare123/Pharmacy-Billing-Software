@@ -1,8 +1,14 @@
+
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
 const Sales = () => {
+  // ==============================
+  // STATES
+  // ==============================
+
   const [medicines, setMedicines] = useState([]);
+
   const [customerName, setCustomerName] = useState("");
 
   const [items, setItems] = useState([]);
@@ -13,8 +19,6 @@ const Sales = () => {
     price: "",
   });
 
-  const [total, setTotal] = useState(0);
-
   const [loadingMedicines, setLoadingMedicines] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -24,10 +28,12 @@ const Sales = () => {
   // ==============================
   // FETCH MEDICINES
   // ==============================
+
   useEffect(() => {
     const fetchMedicines = async () => {
       try {
         setLoadingMedicines(true);
+        setError("");
 
         const response = await axios.get(
           "http://localhost:8080/api/medicines"
@@ -38,6 +44,7 @@ const Sales = () => {
         setMedicines(response.data);
       } catch (err) {
         console.error("Medicine fetch error:", err);
+
         setError("Failed to load medicines");
       } finally {
         setLoadingMedicines(false);
@@ -48,8 +55,18 @@ const Sales = () => {
   }, []);
 
   // ==============================
-  // HANDLE INPUT
+  // CALCULATE TOTAL
   // ==============================
+
+  const total = items.reduce(
+    (sum, item) => sum + item.totalPrice,
+    0
+  );
+
+  // ==============================
+  // HANDLE ITEM INPUT
+  // ==============================
+
   const handleItemChange = (e) => {
     const { name, value } = e.target;
 
@@ -64,33 +81,52 @@ const Sales = () => {
   // ==============================
   // ADD ITEM
   // ==============================
+
   const addItem = () => {
     setError("");
     setSuccess("");
 
+    console.log("========== ADD ITEM ==========");
     console.log("New Item:", newItem);
 
-    // Medicine validation
+    // ------------------------------
+    // MEDICINE VALIDATION
+    // ------------------------------
+
     if (!newItem.medicineId) {
       setError("Please select a medicine");
       return;
     }
 
-    // Quantity validation
-    if (!newItem.quantity || Number(newItem.quantity) <= 0) {
+    // ------------------------------
+    // QUANTITY VALIDATION
+    // ------------------------------
+
+    const quantity = Number(newItem.quantity);
+
+    if (!newItem.quantity || quantity <= 0) {
       setError("Please enter a valid quantity");
       return;
     }
 
-    // Price validation
-    if (!newItem.price || Number(newItem.price) <= 0) {
+    // ------------------------------
+    // PRICE VALIDATION
+    // ------------------------------
+
+    const price = Number(newItem.price);
+
+    if (!newItem.price || price <= 0) {
       setError("Please enter a valid selling price");
       return;
     }
 
-    // Find medicine
+    // ------------------------------
+    // FIND MEDICINE
+    // ------------------------------
+
     const selectedMedicine = medicines.find(
-      (medicine) => medicine.id === Number(newItem.medicineId)
+      (medicine) =>
+        Number(medicine.id) === Number(newItem.medicineId)
     );
 
     console.log("Selected Medicine:", selectedMedicine);
@@ -100,38 +136,73 @@ const Sales = () => {
       return;
     }
 
-    // Stock validation
-    if (
-      selectedMedicine.stockQuantity !== null &&
-      Number(newItem.quantity) > selectedMedicine.stockQuantity
-    ) {
+    // ------------------------------
+    // STOCK VALIDATION
+    // ------------------------------
+
+    const availableStock = Number(
+      selectedMedicine.stockQuantity ?? 0
+    );
+
+    if (quantity > availableStock) {
       setError(
-        `Only ${selectedMedicine.stockQuantity} units available for ${selectedMedicine.name}`
+        `Only ${availableStock} units available for ${selectedMedicine.name}`
       );
       return;
     }
 
-    // Calculate item total
-    const itemTotal =
-      Number(newItem.quantity) * Number(newItem.price);
+    // ------------------------------
+    // CHECK DUPLICATE MEDICINE
+    // ------------------------------
+
+    const alreadyAdded = items.find(
+      (item) =>
+        Number(item.medicineId) === Number(selectedMedicine.id)
+    );
+
+    if (alreadyAdded) {
+      setError(
+        `${selectedMedicine.name} is already added. Remove it and add again.`
+      );
+      return;
+    }
+
+    // ------------------------------
+    // CALCULATE ITEM TOTAL
+    // ------------------------------
+
+    const itemTotal = quantity * price;
+
+    // ------------------------------
+    // CREATE ITEM
+    // ------------------------------
 
     const item = {
-      medicineId: selectedMedicine.id,
+      medicineId: Number(selectedMedicine.id),
       medicineName: selectedMedicine.name,
-      quantity: Number(newItem.quantity),
-      price: Number(newItem.price),
+      quantity: quantity,
+      price: price,
       totalPrice: itemTotal,
     };
 
     console.log("Adding Item:", item);
 
-    // Add item
-    setItems((prevItems) => [...prevItems, item]);
+    // ------------------------------
+    // ADD TO ITEMS
+    // ------------------------------
 
-    // Update total
-    setTotal((prevTotal) => prevTotal + itemTotal);
+    setItems((prevItems) => {
+      const updatedItems = [...prevItems, item];
 
-    // Clear new item
+      console.log("Updated Items:", updatedItems);
+
+      return updatedItems;
+    });
+
+    // ------------------------------
+    // RESET INPUT
+    // ------------------------------
+
     setNewItem({
       medicineId: "",
       quantity: "",
@@ -142,27 +213,30 @@ const Sales = () => {
   // ==============================
   // REMOVE ITEM
   // ==============================
-  const removeItem = (index) => {
-    const removedItem = items[index];
 
+  const removeItem = (index) => {
     setItems((prevItems) =>
       prevItems.filter((_, i) => i !== index)
     );
 
-    setTotal(
-      (prevTotal) =>
-        prevTotal - removedItem.totalPrice
-    );
+    setError("");
+    setSuccess("");
   };
 
   // ==============================
   // SAVE SALE
   // ==============================
+
   const handleSaveSale = async () => {
     setError("");
     setSuccess("");
 
+    console.log("========== SAVE SALE ==========");
     console.log("Items before save:", items);
+
+    // ------------------------------
+    // ITEMS VALIDATION
+    // ------------------------------
 
     if (items.length === 0) {
       setError("Please add at least one medicine");
@@ -172,18 +246,29 @@ const Sales = () => {
     try {
       setSaving(true);
 
+      // ------------------------------
+      // CREATE REQUEST
+      // ------------------------------
+
       const saleData = {
         invoiceNumber: `INV-${Date.now()}`,
+
+        totalAmount: Number(total.toFixed(2)),
+
         paymentStatus: "PAID",
 
         items: items.map((item) => ({
-          medicineId: item.medicineId,
-          quantity: item.quantity,
-          sellingPrice: item.price,
+          medicineId: Number(item.medicineId),
+          quantity: Number(item.quantity),
+          sellingPrice: Number(item.price),
         })),
       };
 
       console.log("Sale Request:", saleData);
+
+      // ------------------------------
+      // POST SALE
+      // ------------------------------
 
       const response = await axios.post(
         "http://localhost:8080/api/sales",
@@ -192,12 +277,19 @@ const Sales = () => {
 
       console.log("Sale Response:", response.data);
 
+      // ------------------------------
+      // SUCCESS
+      // ------------------------------
+
       setSuccess("Sale saved successfully!");
 
-      // Reset
+      // ------------------------------
+      // RESET FORM
+      // ------------------------------
+
       setCustomerName("");
+
       setItems([]);
-      setTotal(0);
 
       setNewItem({
         medicineId: "",
@@ -205,15 +297,24 @@ const Sales = () => {
         price: "",
       });
 
+      // Refresh medicines so updated stock appears
+      const medicineResponse = await axios.get(
+        "http://localhost:8080/api/medicines"
+      );
+
+      setMedicines(medicineResponse.data);
     } catch (err) {
       console.error("Sale error:", err);
 
       if (err.response) {
-        console.log("Backend response:", err.response.data);
+        console.error(
+          "Backend response:",
+          err.response.data
+        );
 
         if (typeof err.response.data === "string") {
           setError(err.response.data);
-        } else if (err.response.data.message) {
+        } else if (err.response.data?.message) {
           setError(err.response.data.message);
         } else {
           setError("Failed to save sale");
@@ -229,10 +330,11 @@ const Sales = () => {
   // ==============================
   // CANCEL
   // ==============================
+
   const handleCancel = () => {
     setCustomerName("");
+
     setItems([]);
-    setTotal(0);
 
     setNewItem({
       medicineId: "",
@@ -244,21 +346,29 @@ const Sales = () => {
     setSuccess("");
   };
 
+  // ==============================
+  // UI
+  // ==============================
+
   return (
     <div className="p-6">
+
+      {/* PAGE TITLE */}
 
       <h1 className="text-2xl font-bold mb-6">
         New Sale
       </h1>
 
-      {/* SUCCESS */}
+      {/* SUCCESS MESSAGE */}
+
       {success && (
         <div className="mb-4 p-3 bg-green-100 text-green-700 rounded">
           {success}
         </div>
       )}
 
-      {/* ERROR */}
+      {/* ERROR MESSAGE */}
+
       {error && (
         <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
           {error}
@@ -266,24 +376,32 @@ const Sales = () => {
       )}
 
       {/* CUSTOMER */}
-      <div className="mb-4">
+
+      <div className="mb-6">
+
+        <label className="block text-sm font-medium mb-2">
+          Customer Name
+        </label>
 
         <input
           type="text"
-          placeholder="Customer Name"
+          placeholder="Enter customer name"
           value={customerName}
           onChange={(e) =>
             setCustomerName(e.target.value)
           }
-          className="p-2 border rounded w-1/3"
+          className="p-2 border rounded w-full md:w-1/3"
         />
 
       </div>
 
-      {/* TABLE */}
+      {/* SALES TABLE */}
+
       <div className="overflow-x-auto">
 
         <table className="w-full border-collapse bg-white shadow-md rounded-lg overflow-hidden mb-6">
+
+          {/* HEADER */}
 
           <thead className="bg-blue-600 text-white">
 
@@ -320,11 +438,11 @@ const Sales = () => {
             {items.map((item, index) => (
 
               <tr
-                key={index}
+                key={`${item.medicineId}-${index}`}
                 className="border-b"
               >
 
-                <td className="p-3">
+                <td className="p-3 font-medium">
                   {item.medicineName}
                 </td>
 
@@ -333,7 +451,7 @@ const Sales = () => {
                 </td>
 
                 <td className="p-3">
-                  ₹{item.price}
+                  ₹{item.price.toFixed(2)}
                 </td>
 
                 <td className="p-3">
@@ -343,6 +461,7 @@ const Sales = () => {
                 <td className="p-3">
 
                   <button
+                    type="button"
                     onClick={() =>
                       removeItem(index)
                     }
@@ -357,6 +476,23 @@ const Sales = () => {
 
             ))}
 
+            {/* EMPTY STATE */}
+
+            {items.length === 0 && (
+
+              <tr>
+
+                <td
+                  colSpan="5"
+                  className="p-6 text-center text-gray-500"
+                >
+                  No medicines added yet
+                </td>
+
+              </tr>
+
+            )}
+
             {/* NEW ITEM */}
 
             <tr className="border-b bg-gray-50">
@@ -369,13 +505,13 @@ const Sales = () => {
                   name="medicineId"
                   value={newItem.medicineId}
                   onChange={handleItemChange}
-                  className="p-2 border rounded w-full"
                   disabled={loadingMedicines}
+                  className="p-2 border rounded w-full"
                 >
 
                   <option value="">
                     {loadingMedicines
-                      ? "Loading..."
+                      ? "Loading medicines..."
                       : "Select Medicine"}
                   </option>
 
@@ -384,6 +520,9 @@ const Sales = () => {
                     <option
                       key={medicine.id}
                       value={medicine.id}
+                      disabled={
+                        Number(medicine.stockQuantity) <= 0
+                      }
                     >
                       {medicine.name} - Stock:{" "}
                       {medicine.stockQuantity}
@@ -418,7 +557,7 @@ const Sales = () => {
                 <input
                   type="number"
                   name="price"
-                  min="0"
+                  min="0.01"
                   step="0.01"
                   placeholder="Selling Price"
                   value={newItem.price}
@@ -428,12 +567,24 @@ const Sales = () => {
 
               </td>
 
+              {/* TOTAL */}
+
               <td className="p-3">
                 -
               </td>
 
+              {/* ACTION */}
+
               <td className="p-3">
-                -
+
+                <button
+                  type="button"
+                  onClick={addItem}
+                  className="bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700 whitespace-nowrap"
+                >
+                  + Add Item
+                </button>
+
               </td>
 
             </tr>
@@ -444,38 +595,45 @@ const Sales = () => {
 
       </div>
 
-      {/* ADD ITEM */}
+      {/* BOTTOM SECTION */}
 
-      <button
-        onClick={addItem}
-        className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 mb-6"
-      >
-        + Add Item
-      </button>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
 
-      {/* TOTAL */}
+        {/* TOTAL */}
 
-      <div className="flex justify-between items-center">
+        <div>
 
-        <h2 className="text-xl font-semibold">
-          Total: ₹{total.toFixed(2)}
-        </h2>
+          <h2 className="text-xl font-semibold">
+            Total: ₹{total.toFixed(2)}
+          </h2>
+
+          <p className="text-sm text-gray-500 mt-1">
+            {items.length} medicine
+            {items.length !== 1 ? "s" : ""} added
+          </p>
+
+        </div>
+
+        {/* ACTION BUTTONS */}
 
         <div className="flex gap-4">
 
           <button
+            type="button"
             onClick={handleCancel}
-            className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500"
+            disabled={saving}
+            className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500 disabled:opacity-50"
           >
             Cancel
           </button>
 
           <button
+            type="button"
             onClick={handleSaveSale}
-            disabled={saving}
-            className={`px-4 py-2 text-white rounded ${
-              saving
-                ? "bg-blue-300"
+            disabled={saving || items.length === 0}
+            className={`px-5 py-2 text-white rounded ${
+              saving || items.length === 0
+                ? "bg-blue-300 cursor-not-allowed"
                 : "bg-blue-600 hover:bg-blue-700"
             }`}
           >
@@ -491,3 +649,4 @@ const Sales = () => {
 };
 
 export default Sales;
+
