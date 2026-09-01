@@ -17,6 +17,8 @@ public class SaleResponseDTO {
 
     private String invoiceNumber;
 
+//    private String customer;
+
     private LocalDateTime saleDate;
 
     private BigDecimal totalAmount;
