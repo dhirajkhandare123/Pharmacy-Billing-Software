@@ -42,6 +42,7 @@ public class SaleServiceImpl implements SaleService {
 
         Sale sale = Sale.builder()
                 .invoiceNumber(request.getInvoiceNumber())
+                .customer(request.getCustomer())
                 .saleDate(LocalDateTime.now())
                 .paymentStatus(request.getPaymentStatus())
                 .build();
@@ -99,6 +100,7 @@ public class SaleServiceImpl implements SaleService {
 
             SaleItem saleItem = SaleItem.builder()
                     .medicine(medicine)
+
                     .quantity(itemRequest.getQuantity())
                     .sellingPrice(sellingPrice)
                     .totalPrice(itemTotal)
@@ -210,6 +212,7 @@ public class SaleServiceImpl implements SaleService {
         return SaleResponseDTO.builder()
                 .id(sale.getId())
                 .invoiceNumber(sale.getInvoiceNumber())
+//                .customer(sale.getCustomer())
                 .saleDate(sale.getSaleDate())
                 .totalAmount(sale.getTotalAmount())
                 .paymentStatus(sale.getPaymentStatus())
