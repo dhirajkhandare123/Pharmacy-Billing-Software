@@ -14,6 +14,8 @@ public class SaleRequestDTO {
 
     private String invoiceNumber;
 
+    private String customer;
+
     private BigDecimal totalAmount;
 
     private String paymentStatus;
