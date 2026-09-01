@@ -25,6 +25,7 @@ const Medicines = () => {
 
   // Form data
   const [medicine, setMedicine] = useState({
+    
     name: "",
     manufacturer: "",
     description: "",
@@ -546,6 +547,10 @@ const Medicines = () => {
             <thead className="bg-blue-600 text-white">
               <tr>
                 <th className="p-3 text-left">
+                  Id
+                </th>
+
+                <th className="p-3 text-left">
                   Name
                 </th>
 
@@ -570,9 +575,12 @@ const Medicines = () => {
             <tbody>
               {filteredMedicines.map((medicine) => (
                 <tr
-                  key={medicine.id}
+                  key={medicine.id }
                   className="border-b hover:bg-gray-100"
                 >
+                  <td className="p-3">
+                    {medicine.id || "-"}
+                  </td>
 
                   <td className="p-3">
                     {medicine.name}
